@@ -50,7 +50,7 @@
 
 ⚠️ 如使用本项目代码造成侵权与作者无关
 
-[![Stargazers over time](https://starchart.cc/11273/mooc-work-zjy.svg)](https://starchart.cc/11273/zjy-work-answer)
+[![Stargazers over time](https://starchart.cc/11273/zjy-work-answer.svg)](https://github.com/11273/zjy-work-answer)
 
 ## 效果展示 (随着版本迭代，实际输出内容可能有所不同，请以最新版本为准)
 
