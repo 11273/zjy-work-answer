@@ -158,8 +158,11 @@ def start(session):
                             logging.info("\t\t\t\t\t%s 课程已刷进度 100%", m['name'])
                             continue
                         # 将信息拿去刷课
-                        study_record(session, m, i['classId'])
-                    # 四级目录(最终)
+                        try:
+                            study_record(session, m, i['classId'])
+                        except Exception as e:
+                            logging.error("错误跳过: %s", e)
+                            # 四级目录(最终)
                     else:
                         for n in m.get('children', []):
                             # time.sleep(random.uniform(1, 1.5))
@@ -168,4 +171,8 @@ def start(session):
                                 logging.info("\t\t\t\t\t%s 课程已刷进度 100", n['name'])
                                 continue
                             # 将信息拿去刷课
-                            study_record(session, n, i['classId'])
+
+                            try:
+                                study_record(session, n, i['classId'])
+                            except Exception as e:
+                                logging.error("错误跳过: %s", e)
