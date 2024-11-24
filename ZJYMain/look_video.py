@@ -136,8 +136,21 @@ def study_record(session, info, class_id):
         time.sleep(sleep_randint)
 
 
-def start(session):
+def start(session, jump_content):
+    separator = "*" * 40
+    logger.info(separator)
+    logger.info(f"运行信息")
+    logger.info(separator)
+    logger.info(f"* 跳过课程: {jump_content if jump_content is not None else ''}")
+    logger.info(separator)
+    logger.info("开始执行")
+    logger.info(separator)
     course = get_learnning_course_list(session)
+
+    jump_list = []
+    if jump_content is not None and '#' in jump_content:
+        jump_list = jump_content.split('#')[1:]
+
     logging.info("--------------------------------【加载课程】---------------------------")
     for i in course['rows']:
         logging.info("【%s%%】《%s》- %s %s", i['studySpeed'], i['courseName'], i['presidingTeacher'], i['termName'])
@@ -145,6 +158,9 @@ def start(session):
     time.sleep(random.uniform(1, 1.5))
     for i in course['rows']:
         logging.info("进入课程：【%s】", i['courseName'])
+        if any(s in i['courseName'] for s in jump_list):
+            logger.info("\t匹配到过滤条件: %s - 跳过", i['courseName'])
+            continue
         time.sleep(random.uniform(1, 1.5))
         # 一级目录
         moduleList1 = get_process_list(session, i['courseId'], i['classId'], 0, 1)
