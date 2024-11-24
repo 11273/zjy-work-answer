@@ -17,6 +17,12 @@
 > - 🎉
 > - 📢 当前处于Bate测试阶段，请按需使用
 
+## 下载
+
+- 最新版下载 [Download exe 绿色运行版 >>>](https://github.com/11273/zjy-work-answer/releases)
+- 历史版本下载[请前往>>>](https://github.com/11273/zjy-work-answer/releases)
+
+
 ## 运行环境
 
 - python ≥ 3.6
@@ -28,14 +34,8 @@
 
 ## 使用方法
 
-1. 打开文件`StartWork.py`输入账号密码
-
-    ```python
-    username = ""  # 账号
-    password = ""  # 密码
-    ```
-
-2. 运行 `StartWork.py`
+1. 运行 `StartWork.py`
+2. 根据提示输入账号密码
 
 ## BUG 提交
 

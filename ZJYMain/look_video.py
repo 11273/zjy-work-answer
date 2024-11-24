@@ -4,10 +4,16 @@
 # @Site : 
 # @File : look_video.py
 # @Software: PyCharm
+import base64
 import json
 import logging
 import random
 import time
+from urllib.parse import quote
+
+from Crypto.Cipher import AES
+from Crypto.Hash import MD5
+from Crypto.Util.Padding import pad
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -25,7 +31,7 @@ GET_LEARNNING_COURSE_LIST = BASE_URL + '/spoc/courseInfoStudent/myCourseList'
 GET_PROCESS_LIST = BASE_URL + '/spoc/courseDesign/study/record'
 
 # 刷课记录时长
-STU_PROCESS_CELL_LOG = BASE_URL + '/spoc/studyRecord'
+STU_PROCESS_CELL_LOG = BASE_URL + '/spoc/studyRecord/update'
 
 # PPT类型获取总页数
 GET_URL_PNGS = BASE_URL + '/spoc/oss/getUrlPngs'
@@ -69,11 +75,22 @@ def stu_process_cell_log(session, course_info_id, class_id, study_time, source_i
         "actualNum": total_num,
         "lastNum": total_num,
     }
-    result = session.put(url=STU_PROCESS_CELL_LOG, json=data, headers=headers)
+
+    def encrypt_data(_data):
+        access_token = session.access_token
+        key = MD5.new(access_token.encode()).hexdigest()[:16]
+        data_bytes = json.dumps(_data, separators=(',', ':')).encode('utf-8')
+        padded_data = pad(data_bytes, AES.block_size)
+        cipher = AES.new(key.encode('utf-8'), AES.MODE_ECB)
+        encrypted_data = cipher.encrypt(padded_data)
+        return base64.b64encode(encrypted_data).decode()
+
+    param = {"param": quote(encrypt_data(data))}
+    result = session.post(url=STU_PROCESS_CELL_LOG, json=param, headers=headers)
     try:
         return result.json()['msg']
     except Exception as e:
-        logging.info(result.text)
+        logging.error(result.text, e)
 
 
 # 获取总页数
@@ -123,7 +140,7 @@ def start(session):
     course = get_learnning_course_list(session)
     logging.info("--------------------------------【加载课程】---------------------------")
     for i in course['rows']:
-        logging.info("《%s》- %s %s", i['courseName'], i['presidingTeacher'], i['termName'])
+        logging.info("【%s%%】《%s》- %s %s", i['studySpeed'], i['courseName'], i['presidingTeacher'], i['termName'])
     logging.info("--------------------------------【加载完成】---------------------------")
     time.sleep(random.uniform(1, 1.5))
     for i in course['rows']:

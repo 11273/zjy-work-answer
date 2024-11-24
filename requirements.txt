@@ -1,1 +1,5 @@
 requests~=2.31.0
+numpy==1.24.4
+opencv_python_headless==4.6.0.66
+Pillow==10.0.0
+pycryptodome~=3.18.0
