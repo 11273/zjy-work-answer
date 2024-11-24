@@ -89,8 +89,3 @@ def start_verify():
             return imgCode
         else:
             logger.info(code_result['repMsg'])
-
-
-if __name__ == '__main__':
-    verify = start_verify()
-    print(verify)

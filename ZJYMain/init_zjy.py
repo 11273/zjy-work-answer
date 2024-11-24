@@ -10,8 +10,6 @@ import time
 
 import requests
 
-from ZJYMain.verify import start_verify
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -50,9 +48,5 @@ def login(username, password, img_code=None):  # 0.登录
         return session
     else:
         logger.info(f"登录失败: {username} msg: {post_json['msg']}")
-        if post_json['code'] == 500 and "请滑动滑块验证码" in post_json['msg'] or "验证码验证失败" in post_json['msg']:
-            data['imgCode'] = start_verify()
-            return login(username, password, img_code=data['imgCode'])
-        if post_json['code'] == 500 and "账号被锁定10分钟" in post_json['msg']:
-            time.sleep(10 * 60)
-            return login(username, password, img_code)
+        input("程序结束，如遇错误请重新运行，多次重复错误请提交Github...")
+
