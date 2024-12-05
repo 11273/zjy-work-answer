@@ -5,7 +5,6 @@ from tkinter import messagebox
 
 import requests
 
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -36,8 +35,14 @@ def get_latest_release(repo):
         response = requests.get(url)
         response.raise_for_status()
         return response.json()
+    except requests.exceptions.HTTPError as e:
+        if response.status_code == 403:
+            logger.warning("获取更新过于频繁，请稍后重试。")
+        else:
+            logger.warning(f"HTTP error occurred: {e}")
+        return None
     except requests.RequestException as e:
-        logger.warning(f"获取发布信息时出错: {e}")
+        logger.warning(f"获取发布信息时出错: {e.response}")
         return None
 
 
@@ -52,26 +57,31 @@ def show_update_prompt(asset_url):
     root = tk.Tk()
     root.withdraw()  # 隐藏主窗口
 
-    if messagebox.askyesno("更新可用", "检测到新版本，是否下载？"):
+    if messagebox.askyesno("更新可用", "检测到新版本，是否前往下载？"):
         open_download_url(asset_url)
 
     root.destroy()
 
 
 def check_for_updates(app_version):
-    if app_version == 'dev':
-        logger.debug("开发环境，不检查更新。")
-        return
+    try:
+        if app_version == 'dev':
+            logger.debug("开发环境，不检查更新。")
+            return
 
-    logger.info("检查更新中，请稍后...")
-    release_info = get_latest_release(REPO)
-    if not release_info:
-        return
+        logger.info("检查更新中，请稍后...")
+        release_info = get_latest_release(REPO)
+        if not release_info:
+            return
 
-    latest_version = release_info['tag_name']
-    asset_html_url = release_info['html_url']
+        latest_version = release_info['tag_name']
+        asset_html_url = release_info['html_url']
 
-    if version_greater_than(latest_version, app_version):
-        show_update_prompt(asset_html_url)
-    else:
-        logger.info("当前已是最新版本。")
+        if version_greater_than(latest_version, app_version):
+            show_update_prompt(asset_html_url)
+        else:
+            logger.info("当前已是最新版本。")
+    except Exception as e:
+        logger.exception("检查更新时出错", e)
+    finally:
+        logger.info("更新检查完成。")
