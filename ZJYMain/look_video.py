@@ -157,7 +157,12 @@ def start(session, jump_content):
     logging.info("--------------------------------【加载完成】---------------------------")
     time.sleep(random.uniform(1, 1.5))
     for i in course['rows']:
-        logging.info("进入课程：【%s】", i['courseName'])
+        if i['studySpeed'] == 100:
+            logging.info("进入课程：【%s】课程已刷进度 100 - 跳过", i['courseName'])
+            continue
+        else:
+            logging.info("进入课程：【%s】", i['courseName'])
+
         if any(s in i['courseName'] for s in jump_list):
             logger.info("\t匹配到过滤条件: %s - 跳过", i['courseName'])
             continue
@@ -172,12 +177,12 @@ def start(session, jump_content):
                 continue
             logging.info("\t%s", j['name'])
             # 二级目录
-            moduleList2 = get_process_list(session, i['courseId'],i['courseInfoId'], i['classId'], j['id'], 2)
+            moduleList2 = get_process_list(session, i['courseId'], i['courseInfoId'], i['classId'], j['id'], 2)
             for k in moduleList2:
                 # time.sleep(random.uniform(0.5, 1))
                 logging.info("\t\t%s", k['name'])
                 # 三级目录
-                moduleList3 = get_process_list(session, i['courseId'],i['courseInfoId'], i['classId'], k['id'], 3)
+                moduleList3 = get_process_list(session, i['courseId'], i['courseInfoId'], i['classId'], k['id'], 3)
                 for m in moduleList3:
                     # time.sleep(random.uniform(0.5, 1))
                     if m['speed'] == 100:
