@@ -51,10 +51,10 @@ def get_learnning_course_list(session):
 
 
 # 2.得到一级目录
-def get_process_list(session, course_id, open_class_id, parent_id, level):
+def get_process_list(session, course_id, course_info_id, open_class_id, parent_id, level):
     data = {
         'courseId': course_id,
-        'courseInfoId': course_id,
+        'courseInfoId': course_info_id,
         'parentId': parent_id,
         "level": level,
         "classId": open_class_id
@@ -163,7 +163,7 @@ def start(session, jump_content):
             continue
         time.sleep(random.uniform(1, 1.5))
         # 一级目录
-        moduleList1 = get_process_list(session, i['courseId'], i['classId'], 0, 1)
+        moduleList1 = get_process_list(session, i['courseId'], i['courseInfoId'], i['classId'], 0, 1)
 
         for j in moduleList1:
             time.sleep(random.uniform(0.5, 1))
@@ -172,12 +172,12 @@ def start(session, jump_content):
                 continue
             logging.info("\t%s", j['name'])
             # 二级目录
-            moduleList2 = get_process_list(session, i['courseId'], i['classId'], j['id'], 2)
+            moduleList2 = get_process_list(session, i['courseId'],i['courseInfoId'], i['classId'], j['id'], 2)
             for k in moduleList2:
                 # time.sleep(random.uniform(0.5, 1))
                 logging.info("\t\t%s", k['name'])
                 # 三级目录
-                moduleList3 = get_process_list(session, i['courseId'], i['classId'], k['id'], 3)
+                moduleList3 = get_process_list(session, i['courseId'],i['courseInfoId'], i['classId'], k['id'], 3)
                 for m in moduleList3:
                     # time.sleep(random.uniform(0.5, 1))
                     if m['speed'] == 100:
