@@ -114,12 +114,12 @@ def study_record(session, info, class_id):
     course_id = info['id']
     course_info_id = info['courseInfoId']
     file_url = json.loads(info['fileUrl'])['url']
-    if file_type == "img":
+    if file_type in ["img", "图文"]:
         resp_result = stu_process_cell_log(session, course_info_id, class_id, random.randint(12, 22), course_id, 1)
         sleep_randint = random.randint(5, 10)
         logging.info('\t\t\t\t\t\t学习课件中... 课程: %s 延时: %s 结果: %s', name, sleep_randint, resp_result)
         time.sleep(sleep_randint)
-    elif file_type == "ppt" or file_type == "doc" or file_type == "pdf":
+    elif file_type in ["pdf", "ppt", "doc"]:
         total_num = get_url_pngs(session, file_url)
         resp_result = stu_process_cell_log(session, course_info_id, class_id, random.randint(12, 22), course_id,
                                            total_num)
