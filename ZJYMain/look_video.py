@@ -119,7 +119,7 @@ def study_record(session, info, class_id):
         sleep_randint = random.randint(5, 10)
         logging.info('\t\t\t\t\t\t学习课件中... 课程: %s 延时: %s 结果: %s', name, sleep_randint, resp_result)
         time.sleep(sleep_randint)
-    elif file_type == "ppt" or file_type == "doc":
+    elif file_type == "ppt" or file_type == "doc" or file_type == "pdf":
         total_num = get_url_pngs(session, file_url)
         resp_result = stu_process_cell_log(session, course_info_id, class_id, random.randint(12, 22), course_id,
                                            total_num)
@@ -134,6 +134,8 @@ def study_record(session, info, class_id):
         sleep_randint = random.randint(5, 10)
         logging.info('\t\t\t\t\t\t学习课件中... 课程: %s 延时: %s 结果: %s', name, sleep_randint, resp_result)
         time.sleep(sleep_randint)
+    else:
+        logging.info("\t\t\t\t\t\t文件类型不支持请提交反馈进行适配: %s, 课程: %s", file_type, name)
 
 
 def start(session, jump_content):
