@@ -19,7 +19,7 @@
 
 ## 下载
 
-- 最新版下载 [Download exe 绿色运行版 >>>](https://github.com/11273/zjy-work-answer/releases/tag/v1.0.4)
+- 最新版下载 [Download exe 绿色运行版 >>>](https://github.com/11273/zjy-work-answer/releases/tag/v1.1.0)
 - 历史版本下载[请前往>>>](https://github.com/11273/zjy-work-answer/releases)
 
 
