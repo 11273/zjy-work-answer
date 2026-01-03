@@ -35,7 +35,7 @@
 
 ### 方式一：发行版下载（推荐）
 
-- 最新版下载 [Download exe 绿色运行版 >>>](https://github.com/11273/zjy-work-answer/releases/tag/v1.2.0)
+- 最新版下载 [Download exe 绿色运行版 >>>](https://github.com/11273/zjy-work-answer/releases/tag/v1.3.0)
 - 历史版本下载 [请前往>>>](https://github.com/11273/zjy-work-answer/releases)
 
 ### 方式二：源码运行
