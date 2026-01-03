@@ -101,23 +101,26 @@ def login_interactive():
     logger.info("🚀 ZJY助手登录服务")
     logger.info("=" * 60)
     logger.info("请选择登录方式：")
-    logger.info("1. 用户名密码登录（传统方式）")
+    logger.info("1. 失效-用户名密码登录（传统方式）")
     logger.info("2. OAuth浏览器登录（推荐）")
     logger.info("=" * 60)
 
-    while True:
-        choice = input("请输入选择 (1/2): ").strip()
+    return login_with_oauth()
 
-        if choice == "1":
-            # 传统登录
-            username = input("请输入用户名: ").strip()
-            password = input("请输入密码: ").strip()
-            return login(username, password)
-
-        elif choice == "2":
-            # OAuth登录
-            return login_with_oauth()
-
-        else:
-            logger.warning("⚠️ 无效选择，请输入 1 或 2")
-            continue
+    # while True:
+    #     time.sleep(0.3)
+    #     choice = input("请输入选择 (1/2): ").strip()
+    #
+    #     if choice == "1":
+    #         # 传统登录
+    #         username = input("请输入用户名: ").strip()
+    #         password = input("请输入密码: ").strip()
+    #         return login(username, password)
+    #
+    #     elif choice == "2":
+    #         # OAuth登录
+    #         return login_with_oauth()
+    #
+    #     else:
+    #         logger.warning("⚠️ 无效选择，请输入 1 或 2")
+    #         continue
