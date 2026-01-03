@@ -15,6 +15,7 @@ from urllib.parse import quote
 from Crypto.Cipher import AES
 from Crypto.Hash import MD5
 from Crypto.Util.Padding import pad
+from ZJYMain.audio_utils import calculate_audio_study_params
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -160,7 +161,7 @@ def study_record(session, info, class_id):
     file_type = info['fileType']
     course_id = info.get('id') or info.get('activityId')
     course_info_id = info['courseInfoId']
-    file_url = json.loads(info['fileUrl'])['url']
+    file_url = json.loads(info['fileUrl'])['url'] if info.get('fileUrl') else ''
     if file_type in ["img", "图文"]:
         resp_result = stu_process_cell_log(session, course_info_id, class_id, random.randint(12, 22), course_id, 1)
         sleep_randint = random.randint(5, 10)
@@ -173,14 +174,15 @@ def study_record(session, info, class_id):
         sleep_randint = random.randint(5, 10)
         logging.info('\t\t\t\t\t\t学习课件中... 课程: %s 延时: %s 结果: %s', name, sleep_randint, resp_result)
         time.sleep(sleep_randint)
-    # elif file_type == "audio":
-    #     audio_time = content_audio(session, course_id, course_id)
-    #     audio_time_sec = time_to_seconds(audio_time)
-    #     resp_result = stu_process_cell_log(session, course_info_id, class_id, audio_time_sec, course_id, audio_time)
-    #     logging.info('\t\t\t\t\t\t学习课件中... 课程: %s 延时: %s 结果: %s', name, sleep_randint, resp_result)
-    #     time.sleep(sleep_randint)
+    elif file_type == "audio":
+        audio_params = calculate_audio_study_params(info)
+        study_time = audio_params['study_time']
+        duration_seconds = audio_params['duration_seconds']
+        resp_result = stu_process_cell_log(session, course_info_id, class_id, study_time, course_id, duration_seconds)
+        logging.info('\t\t\t\t\t\t学习课件中... 课程: %s 学习时长: %s秒 延时: %s 结果: %s', name, duration_seconds, sleep_randint, resp_result)
+        time.sleep(sleep_randint)
     elif file_type == "video":
-        video_time = get_video_time(session, file_url)['args']['duration']
+        video_time = get_video_time(session, file_url)['args'].get('duration', '00:10')
         total_seconds = int(sum(float(x) * 60 ** i for i, x in enumerate(reversed(video_time.split(':')))))
         study_time = total_seconds + random.randint(12, 22)
         resp_result = stu_process_cell_log(session, course_info_id, class_id, study_time, course_id, total_seconds)
@@ -197,12 +199,12 @@ def process_standard_course(session, i):
     moduleList1 = get_process_list(session, i['courseId'], i['courseInfoId'], i['classId'], 0, 1)
 
     for j in moduleList1:
-        time.sleep(random.uniform(0.5, 1))
         if j['speed'] == 100:
             logging.info("\t%s 课程已刷进度 100", j['name'])
             continue
         logging.info("\t%s", j['name'])
         # 二级目录
+        time.sleep(random.uniform(0.5, 1))
         moduleList2 = get_process_list(session, i['courseId'], i['courseInfoId'], i['classId'], j['id'], 2)
         for k in moduleList2:
             # time.sleep(random.uniform(0.5, 1))
