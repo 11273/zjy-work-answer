@@ -1,7 +1,5 @@
 import logging
-import tkinter as tk
 import webbrowser
-from tkinter import messagebox
 
 import requests
 
@@ -52,15 +50,41 @@ def open_download_url(asset_url):
     logger.debug(f"浏览器已打开: {asset_url}。")
 
 
-def show_update_prompt(asset_url):
-    """显示更新提示弹窗。"""
+def _ask_for_update(asset_url):
+    """
+    询问用户是否下载新版本。
+
+    tkinter 属于可选的 GUI 依赖，精简版 Python、无桌面环境的 Linux
+    以及 Homebrew 默认安装的 Python 都不带它，因此延迟到使用时再导入，
+    缺少 tkinter 时降级为命令行提示。
+
+    :param asset_url: 新版本下载地址
+    :return: 是否需要打开下载页面
+    """
+    try:
+        import tkinter as tk
+        from tkinter import messagebox
+    except ImportError:
+        logger.warning("当前环境不支持图形界面，改为命令行提示。")
+        logger.warning("新版本下载地址: %s", asset_url)
+        try:
+            answer = input("检测到新版本，是否前往下载？(y/N): ")
+        except (EOFError, OSError):
+            return False
+        return answer.strip().lower() == "y"
+
     root = tk.Tk()
     root.withdraw()  # 隐藏主窗口
+    try:
+        return messagebox.askyesno("更新可用", "检测到新版本，是否前往下载？")
+    finally:
+        root.destroy()
 
-    if messagebox.askyesno("更新可用", "检测到新版本，是否前往下载？"):
+
+def show_update_prompt(asset_url):
+    """显示更新提示（有图形界面时弹窗，否则使用命令行）。"""
+    if _ask_for_update(asset_url):
         open_download_url(asset_url)
-
-    root.destroy()
 
 
 def check_for_updates(app_version):
