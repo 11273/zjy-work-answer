@@ -15,9 +15,12 @@ from urllib.parse import quote
 from Crypto.Cipher import AES
 from Crypto.Hash import MD5
 from Crypto.Util.Padding import pad
-from ZJYMain.audio_utils import calculate_audio_study_params
+from ZJYMain.audio_utils import calculate_audio_study_params, calculate_video_study_params, time_to_seconds
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+)
 logger = logging.getLogger(__name__)
 
 headers = {
@@ -37,14 +40,17 @@ GET_PROCESS_LIST = BASE_URL + '/spoc/courseDesign/study/record'
 GET_PROCESS_LIST_FAST = BASE_URL + '/spoc/courseFaceTeachInfo/fast/student/info'
 
 # 刷课记录时长
-STU_PROCESS_CELL_LOG = BASE_URL + '/spoc/studyRecord/update'
+# 旧接口 /spoc/studyRecord/update 已停用，固定返回“版本已升级”提示。
+# 新接口：POST /spoc/studyRecord，请求体仍为 {"param": "<AES加密后的JSON>"}
+STU_PROCESS_CELL_LOG = BASE_URL + '/spoc/studyRecord'
 STU_PROCESS_CELL_LOG_FAST = BASE_URL + '/spoc/fast/course/study'
 
 # PPT类型获取总页数
 GET_URL_PNGS = BASE_URL + '/spoc/oss/getUrlPngs'
 
-# 视频获取时长
-GET_VIDEO_TIME = 'https://upload.icve.com.cn/{}/status'
+# 视频获取时长（旧接口 upload.icve.com.cn/{url}/status 已 502 停用）
+# 新接口：POST https://urc.icve.com.cn/stage-api/{url}/status?productId=...
+GET_VIDEO_TIME = 'https://urc.icve.com.cn/stage-api/{}/status?productId=86f10208b7aa4d04b36c9600827a8272'
 
 is_fast = False
 
@@ -109,6 +115,17 @@ def get_process_list(session, course_id, course_info_id, open_class_id, parent_i
 
 # 6.开始刷课--------->
 def stu_process_cell_log(session, course_info_id, class_id, study_time, source_id, total_num):
+    """
+    提交学习记录（刷课进度）。
+
+    :param session: 已登录的 requests.Session
+    :param course_info_id: 课程信息 ID
+    :param class_id: 班级 ID
+    :param study_time: 本次学习时长（秒）
+    :param source_id: 资源 ID
+    :param total_num: 资源总页数 / 总时长
+    :return: 服务端返回的提示信息，失败时返回 None
+    """
     data = {
         "courseInfoId": course_info_id,
         "classId": class_id,
@@ -131,30 +148,113 @@ def stu_process_cell_log(session, course_info_id, class_id, study_time, source_i
         return base64.b64encode(encrypted_data).decode()
 
     param = {"param": quote(encrypt_data(data))}
-    if is_fast:
-        result = session.post(url=STU_PROCESS_CELL_LOG_FAST, json=param, headers=headers)
-    else:
-        result = session.post(url=STU_PROCESS_CELL_LOG, json=param, headers=headers)
+    url = STU_PROCESS_CELL_LOG_FAST if is_fast else STU_PROCESS_CELL_LOG
+    result = None
+
     try:
-        return result.json()['msg']
+        result = session.post(url=url, json=param, headers=headers)
+        resp = result.json()
     except Exception as e:
-        logging.error(result.text, e)
+        logging.error("提交学习记录失败: %s (响应: %s)", e, getattr(result, 'text', ''))
+        return None
+
+    # 快速课程接口若不可用，降级走标准新接口再试一次
+    if resp.get('code') != 200 and is_fast:
+        logging.warning("快速课程接口提交失败(%s)，尝试标准接口", resp.get('msg'))
+        try:
+            result = session.post(url=STU_PROCESS_CELL_LOG, json=param, headers=headers)
+            resp = result.json()
+        except Exception as e:
+            logging.error("提交学习记录失败: %s (响应: %s)", e, getattr(result, 'text', ''))
+            return None
+
+    if resp.get('code') != 200:
+        logging.error("提交学习记录失败: %s", resp.get('msg'))
+
+    return resp.get('msg')
 
 
 # 获取总页数
 def get_url_pngs(session, file_url):
-    data = {'fileUrl': file_url, }
-    result = session.get(url=GET_URL_PNGS, params=data, headers=headers)
-    return len(result.json()['data'])
+    """
+    获取课件（pdf/ppt/doc）转换后的总页数。
+
+    文件未转换完成或接口异常时返回 0，由调用方降级处理。
+    """
+    data = {'fileUrl': file_url}
+    try:
+        result = session.get(url=GET_URL_PNGS, params=data, headers=headers, timeout=30)
+        resp = result.json()
+    except Exception as e:
+        logging.warning("获取课件页数失败: %s", e)
+        return 0
+
+    if resp.get('code') != 200 or not resp.get('data'):
+        logging.warning("获取课件页数失败: %s", resp.get('msg'))
+        return 0
+
+    return len(resp['data'])
 
 
 # 获取总时长
 def get_video_time(session, file_url):
-    result = session.get(url=GET_VIDEO_TIME.format(file_url), headers=headers)
-    return result.json()
+    """
+    调用官方转码服务获取视频信息（含时长）。
+
+    接口：POST https://urc.icve.com.cn/stage-api/{url}/status?productId=...
+    失败时返回 None，由调用方降级处理，避免 .json() 抛出 JSONDecodeError。
+    """
+    if not file_url:
+        return None
+
+    try:
+        result = session.post(url=GET_VIDEO_TIME.format(file_url), headers=headers, timeout=20)
+        content_type = result.headers.get('content-type', '')
+        if not result.ok or 'json' not in content_type.lower():
+            logging.warning(
+                "获取视频信息失败(HTTP %s, %s): %s",
+                result.status_code, content_type, file_url,
+            )
+            return None
+        return result.json()
+    except Exception as e:
+        logging.warning("获取视频信息异常: %s (%s)", e, file_url)
+        return None
+
+
+def get_video_duration_seconds(session, info):
+    """
+    获取视频总时长（秒）。
+
+    优先使用官方时长接口，接口不可用时根据文件大小估算。
+    """
+    file_url = ''
+    try:
+        file_url = json.loads(info['fileUrl'])['url']
+    except (KeyError, TypeError, ValueError):
+        pass
+
+    video_time = get_video_time(session, file_url)
+    if video_time:
+        duration = (video_time.get('args') or {}).get('duration')
+        seconds = time_to_seconds(duration)
+        if seconds > 0:
+            return seconds
+
+    # 降级：根据文件大小估算
+    params = calculate_video_study_params(info)
+    logging.info("\t\t\t\t使用文件大小估算视频时长: %s 秒", params['duration_seconds'])
+    return params['duration_seconds']
 
 
 def study_record(session, info, class_id):
+    """
+    根据资源类型提交单条学习记录。
+
+    :param session: 已登录的 requests.Session
+    :param info: 资源信息（课程目录叶子节点）
+    :param class_id: 班级 ID
+    """
     sleep_randint = random.randint(5, 10)
     time.sleep(sleep_randint)
     name = info.get('name') or info.get('title')
@@ -163,31 +263,54 @@ def study_record(session, info, class_id):
     course_info_id = info['courseInfoId']
     file_url = json.loads(info['fileUrl'])['url'] if info.get('fileUrl') else ''
     if file_type in ["img", "图文"]:
-        resp_result = stu_process_cell_log(session, course_info_id, class_id, random.randint(12, 22), course_id, 1)
+        resp_result = stu_process_cell_log(
+            session, course_info_id, class_id, random.randint(12, 22), course_id, 1,
+        )
         sleep_randint = random.randint(5, 10)
-        logging.info('\t\t\t\t\t\t学习课件中... 课程: %s 延时: %s 结果: %s', name, sleep_randint, resp_result)
+        logging.info(
+            '\t\t\t\t\t\t学习课件中... 课程: %s 延时: %s 结果: %s',
+            name, sleep_randint, resp_result,
+        )
         time.sleep(sleep_randint)
     elif file_type in ["pdf", "ppt", "doc"]:
-        total_num = get_url_pngs(session, file_url)
-        resp_result = stu_process_cell_log(session, course_info_id, class_id, random.randint(12, 22), course_id,
-                                           total_num)
+        # 文件可能未转换完成或页数接口异常，此时默认按 1 页提交，避免此前 NoneType 报错
+        total_num = get_url_pngs(session, file_url) or 1
+        resp_result = stu_process_cell_log(
+            session, course_info_id, class_id, random.randint(12, 22), course_id, total_num,
+        )
         sleep_randint = random.randint(5, 10)
-        logging.info('\t\t\t\t\t\t学习课件中... 课程: %s 延时: %s 结果: %s', name, sleep_randint, resp_result)
+        logging.info(
+            '\t\t\t\t\t\t学习课件中... 课程: %s 延时: %s 结果: %s',
+            name, sleep_randint, resp_result,
+        )
         time.sleep(sleep_randint)
     elif file_type == "audio":
         audio_params = calculate_audio_study_params(info)
         study_time = audio_params['study_time']
         duration_seconds = audio_params['duration_seconds']
-        resp_result = stu_process_cell_log(session, course_info_id, class_id, study_time, course_id, duration_seconds)
-        logging.info('\t\t\t\t\t\t学习课件中... 课程: %s 学习时长: %s秒 延时: %s 结果: %s', name, duration_seconds, sleep_randint, resp_result)
+        resp_result = stu_process_cell_log(
+            session, course_info_id, class_id, study_time, course_id, duration_seconds,
+        )
+        logging.info(
+            '\t\t\t\t\t\t学习课件中... 课程: %s 学习时长: %s秒 延时: %s 结果: %s',
+            name, duration_seconds, sleep_randint, resp_result,
+        )
         time.sleep(sleep_randint)
     elif file_type == "video":
-        video_time = get_video_time(session, file_url)['args'].get('duration', '00:10')
-        total_seconds = int(sum(float(x) * 60 ** i for i, x in enumerate(reversed(video_time.split(':')))))
+        try:
+            total_seconds = get_video_duration_seconds(session, info)
+        except Exception as e:
+            logging.warning("获取视频时长失败，使用默认时长: %s", e)
+            total_seconds = 10 * 60
         study_time = total_seconds + random.randint(12, 22)
-        resp_result = stu_process_cell_log(session, course_info_id, class_id, study_time, course_id, total_seconds)
+        resp_result = stu_process_cell_log(
+            session, course_info_id, class_id, study_time, course_id, total_seconds,
+        )
         sleep_randint = random.randint(5, 10)
-        logging.info('\t\t\t\t\t\t学习课件中... 课程: %s 延时: %s 结果: %s', name, sleep_randint, resp_result)
+        logging.info(
+            '\t\t\t\t\t\t学习课件中... 课程: %s 时长: %s秒 延时: %s 结果: %s',
+            name, total_seconds, sleep_randint, resp_result,
+        )
         time.sleep(sleep_randint)
     else:
         logging.info("\t\t\t\t\t\t文件类型不支持请提交反馈进行适配: %s, 课程: %s", file_type, name)
