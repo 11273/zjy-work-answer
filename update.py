@@ -106,6 +106,6 @@ def check_for_updates(app_version):
         else:
             logger.info("当前已是最新版本。")
     except Exception as e:
-        logger.exception("检查更新时出错", e)
+        logger.exception("检查更新时出错: %s", e)
     finally:
         logger.info("更新检查完成。")
