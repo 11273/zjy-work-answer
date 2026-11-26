@@ -50,5 +50,5 @@ if __name__ == "__main__":
             logger.error("❌ 登录失败，程序退出")
             input("程序结束，如遇错误请重新运行，多次重复错误请提交Github...")
     except Exception as e:
-        logging.exception("运行异常", e)
+        logging.exception("运行异常: %s", e)
         input("程序结束，如遇错误请重新运行，多次重复错误请提交Github...")
